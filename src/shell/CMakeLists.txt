@@ -221,3 +221,11 @@ ENDFOREACH(T)
 #     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/mk_lean_sh.sh ${CMAKE_CURRENT_BINARY_DIR}
 #     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lean)
 # add_custom_target(lean_sh DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lean.sh)
+
+## Python extension module
+
+add_subdirectory(pybind11)
+
+pybind11_add_module(leanpy leanpy.cpp)
+
+target_link_libraries(leanpy leanstatic)
