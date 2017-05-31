@@ -21,6 +21,7 @@ namespace py = pybind11;
 #include "util/debug.h"
 #include "util/sstream.h"
 #include "util/interrupt.h"
+#include "util/init_module.h"
 #include "util/memory.h"
 #include "util/thread.h"
 #include "util/lean_path.h"
@@ -57,6 +58,7 @@ using namespace lean;
 void initialize_lean() {
   try {
     lean::initializer init;
+    lean::initialize_util_module();
     unsigned trust_lvl = LEAN_BELIEVER_TRUST_LEVEL+1;
     environment env = mk_environment(trust_lvl);
     options opts;
@@ -66,7 +68,7 @@ void initialize_lean() {
     log_tree lt;
     fs_module_vfs vfs;
     module_mgr mod_mgr(&vfs, lt.get_root(), env, ios);
-    auto mod_info = mod_mgr.get_module("foobar"); // This should raise an exception
+    auto mod_info = mod_mgr.get_module("standard"); // This should raise an exception
     /*
     try {
       auto res = get(mod_info->m_result);

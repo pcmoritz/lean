@@ -228,4 +228,4 @@ add_subdirectory(pybind11)
 
 pybind11_add_module(leanpy leanpy.cpp)
 
-target_link_libraries(leanpy leanstatic)
+target_link_libraries(leanpy leanstatic -static-libstdc++)
