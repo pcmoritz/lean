@@ -53,6 +53,8 @@ namespace py = pybind11;
 #include "shell/simple_pos_info_provider.h"
 #include "shell/leandoc.h"
 
+#include "util/extensible_object.h"
+
 using namespace lean;
 
 void initialize_lean() {
@@ -68,7 +70,7 @@ void initialize_lean() {
     log_tree lt;
     fs_module_vfs vfs;
     module_mgr mod_mgr(&vfs, lt.get_root(), env, ios);
-    auto mod_info = mod_mgr.get_module("standard"); // This should raise an exception
+    auto mod_info = mod_mgr.get_module("/home/ubuntu/lean/library/standard.lean"); // Currently this causes a segfault
     /*
     try {
       auto res = get(mod_info->m_result);
