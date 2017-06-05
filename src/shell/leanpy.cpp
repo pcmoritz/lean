@@ -3,6 +3,7 @@ Author: Philipp C. Moritz
 */
 
 #include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
 
 namespace py = pybind11;
 
@@ -57,40 +58,70 @@ namespace py = pybind11;
 
 using namespace lean;
 
-void initialize_lean() {
-  try {
-    lean::initializer init;
-    lean::initialize_util_module();
+class LeanContext {
+ public:
+  LeanContext() {
     unsigned trust_lvl = LEAN_BELIEVER_TRUST_LEVEL+1;
     environment env = mk_environment(trust_lvl);
     options opts;
     io_state ios(opts, lean::mk_pretty_formatter_factory());
-    auto tq = std::make_shared<st_task_queue>();
-    set_task_queue(tq.get());
-    log_tree lt;
-    fs_module_vfs vfs;
-    module_mgr mod_mgr(&vfs, lt.get_root(), env, ios);
-    auto mod_info = mod_mgr.get_module("/home/ubuntu/lean/library/standard.lean"); // Currently this causes a segfault
-    /*
-    try {
-      auto res = get(mod_info->m_result);
-    } catch (...) {
-      std::cout << "exception occured" << std::endl;
-    }
-    buffer<std::shared_ptr<module_info const>> mod_infos;
-    mod_infos.push_back(mod_info);
-    auto combined_env = get_combined_environment(mod_mgr.get_initial_env(), mod_infos);
-    export_all_as_lowtext(std::cout, combined_env);
-    */
+    tq_ = std::make_shared<st_task_queue>();
+    set_task_queue(tq_.get());
+    log_tree_ = std::make_shared<log_tree>();
+    module_vfs_ = std::make_shared<fs_module_vfs>();
+    mod_mgr_ = std::make_shared<module_mgr>(module_vfs_.get(), log_tree_->get_root(), env, ios);
+    auto mod_info = mod_mgr_->get_module("/home/ubuntu/lean/library/standard.lean");
+
+    // try {
+    //   auto res = lean::get(mod_info->m_result);
+    // } catch (...) {
+    //   std::cout << "exception occured" << std::endl;
+    // }
+    mod_infos_.push_back(mod_info);
+    env_ = get_combined_environment(mod_mgr_->get_initial_env(), mod_infos_);
+  }
+  declaration get(const name& name) {
+    return env_.get(name);
+  }
+
+  lean::initializer init_;
+  lean::environment env_;
+  std::shared_ptr<st_task_queue> tq_;
+  std::shared_ptr<log_tree> log_tree_;
+  std::shared_ptr<fs_module_vfs> module_vfs_;
+  std::shared_ptr<module_mgr> mod_mgr_;
+  buffer<std::shared_ptr<module_info const>> mod_infos_;
+};
+
+LeanContext initialize_lean() {
+  try {
+    return LeanContext();
   } catch (lean::throwable &ex) {
     std::cout << "exception has been thrown: " << ex.what() << std::endl;
   }
 }
 
-PYBIND11_PLUGIN(leanpy) {
-    py::module m("leanpy", "Python module for LEAN");
+std::vector<name> get_module_declarations(const LeanContext& context) {
+  std::vector<name> result;
+  context.env_.for_each_declaration([&result](const declaration& d) {
+      result.push_back(d.get_name());
+    });
+  return result;
+}
 
-    m.def("initialize", &initialize_lean, "Initialize PyLean");
+PYBIND11_MODULE(leanpy, m) {
+  m.doc() = "Python module for LEAN";
 
-    return m.ptr();
+  py::class_<LeanContext>(m, "LeanContext")
+    .def("get", &LeanContext::get);
+  py::class_<declaration>(m, "declaration");
+  py::class_<environment>(m, "environment")
+    .def("get", &environment::get);
+  py::class_<name>(m, "name")
+    .def("__repr__", [](const name& n) {
+	return n.to_string();
+      });
+
+  m.def("initialize", &initialize_lean, "Initialize PyLean");
+  m.def("get_module_declarations", &get_module_declarations);
 }
