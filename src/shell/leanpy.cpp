@@ -61,7 +61,7 @@ using namespace lean;
 
 class LeanContext {
  public:
-  LeanContext() {
+  LeanContext(const std::string &leanpath) {
     unsigned trust_lvl = LEAN_BELIEVER_TRUST_LEVEL+1;
     environment env = mk_environment(trust_lvl);
     options opts;
@@ -71,7 +71,7 @@ class LeanContext {
     log_tree_ = std::make_shared<log_tree>();
     module_vfs_ = std::make_shared<fs_module_vfs>();
     mod_mgr_ = std::make_shared<module_mgr>(module_vfs_.get(), log_tree_->get_root(), env, ios_);
-    auto mod_info = mod_mgr_->get_module("/home/ubuntu/lean/library/standard.lean");
+    auto mod_info = mod_mgr_->get_module(leanpath + "/standard.lean");
 
     // try {
     //   auto res = lean::get(mod_info->m_result);
@@ -99,12 +99,13 @@ class LeanContext {
   buffer<std::shared_ptr<module_info const>> mod_infos_;
 };
 
-std::shared_ptr<LeanContext> initialize_lean() {
+std::shared_ptr<LeanContext> initialize_lean(const std::string& leanpath) {
   try {
-    return std::make_shared<LeanContext>();
+    return std::make_shared<LeanContext>(leanpath);
   } catch (lean::throwable &ex) {
     std::cout << "exception has been thrown: " << ex.what() << std::endl;
   }
+  return nullptr;
 }
 
 std::vector<name> get_module_declarations(std::shared_ptr<LeanContext> context) {
