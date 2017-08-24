@@ -27,6 +27,7 @@ namespace py = pybind11;
 #include "util/memory.h"
 #include "util/thread.h"
 #include "util/lean_path.h"
+#include "util/list.h"
 #include "util/file_lock.h"
 #include "util/sexpr/options.h"
 #include "util/sexpr/option_declarations.h"
@@ -89,7 +90,7 @@ class LeanContext {
     lean::check(env_, d);
   }
 
-  lean::initializer init_;
+  lean::initializer init_; // TODO(pcm): Consider calling this when the module is imported
   lean::environment env_;
   std::shared_ptr<st_task_queue> tq_;
   std::shared_ptr<log_tree> log_tree_;
@@ -124,13 +125,15 @@ PYBIND11_MODULE(leanpy, m) {
     .def("check", &LeanContext::check);
   py::class_<expr>(m, "expr")
     .def("__repr__", [](const expr& e) {
-	std::stringstream ss;
-	ss << e;
-	return ss.str();
-      });
+      std::stringstream ss;
+      ss << e;
+      return ss.str();
+    });
   py::class_<declaration>(m, "declaration")
     .def("__repr__", [](const declaration& d) {
-        return d.get_name().to_string(); // TODO(pcm): also print expression here
+        std::ostringstream out;
+        out << d.get_name() << ":" << d.get_value();
+        return out.str();
       })
     .def_property_readonly("value", &declaration::get_value);
   py::class_<certified_declaration>(m, "certified_declaration");
@@ -138,16 +141,37 @@ PYBIND11_MODULE(leanpy, m) {
     .def("get", &environment::get);
   py::class_<name>(m, "name")
     .def("__repr__", [](const name& n) {
-	return n.to_string();
-      });
+        return n.to_string();
+      })
+    .def(py::init())
+    .def("__init__", [](name &instance, const name& prefix, const std::string& identifier) {
+      new (&instance) name(prefix, identifier.c_str());
+    });
 
   py::class_<level>(m, "level")
     .def_property_readonly_static("zero", [](py::object) {
-	return mk_level_zero();
+        return mk_level_zero();
       }, py::return_value_policy::reference)
     .def_property_readonly_static("one", [](py::object) {
-	return mk_level_one();
+        return mk_level_one();
       }, py::return_value_policy::reference);
+
+  py::class_<list<level>>(m, "LevelList")
+    .def("__init__", [](list<level>& instance, const py::list& l) {
+      std::list<level> result;
+      for (auto item : l) {
+        result.push_back(item.cast<level>());
+      }
+      new (&instance) list<level>(to_list(result.begin(), result.end()));
+    })
+    .def("__len__", [](const list<level> &l) {
+      return length(l);
+    })
+    .def("__repr__", [](const list<level>& l) {
+        std::ostringstream out;
+        out << l;
+        return out.str();
+      });
 
   m.def("initialize", &initialize_lean, "Initialize PyLean");
   m.def("get_module_declarations", &get_module_declarations);
