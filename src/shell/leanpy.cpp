@@ -128,6 +128,9 @@ PYBIND11_MODULE(leanpy, m) {
       std::stringstream ss;
       ss << e;
       return ss.str();
+    })
+    .def("const", [](const name& name, const list<level>& level) {
+      return new expr(mk_constant(name, level));
     });
   py::class_<declaration>(m, "declaration")
     .def("__repr__", [](const declaration& d) {
@@ -144,6 +147,9 @@ PYBIND11_MODULE(leanpy, m) {
         return n.to_string();
       })
     .def(py::init())
+    .def("__init__", [](name& instance, const std::string& identifier) {
+      new (&instance) name(identifier.c_str());
+    })
     .def("__init__", [](name &instance, const name& prefix, const std::string& identifier) {
       new (&instance) name(prefix, identifier.c_str());
     });
